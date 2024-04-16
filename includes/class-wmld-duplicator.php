@@ -239,16 +239,27 @@ if (!class_exists('WMLD_Duplicator')) {
             $settings['default_language'] = pll_default_language();
             $settings['current_language'] = pll_current_language();
 
-            // TODO: 
+            // get a list of custom post types names from the database
+            $custom_post_types = get_post_types(['public' => true, '_builtin' => false]);
+            echo '<pre>';
+            print_r($custom_post_types);
+            echo '</pre>';
+
+            // TODO:: Manage the setting of the plugin to got the post types and taxonomies to translate
+            $settings['commercent'] = WMLD_Duplicator_Posts::get_static('commercent');
+            
+            echo '<pre>'; 
+            print_r($settings);
+            echo '</pre>';
             $settings['posts'] = WMLD_Duplicator_Posts::get_static('post');
             $settings['products'] = WMLD_Duplicator_Products::get_static_products();
             $valid_taxonomies = [...$settings['posts']['valid_taxonomies'], ...$settings['products']['valid_taxonomies']];
             foreach ($valid_taxonomies as $taxonomy) {
                 $settings['taxonomies'][$taxonomy] = WMLD_Duplicator_Taxonomies::get_static($taxonomy);
             }
-            echo '<pre>'; 
-            print_r($settings);
-            echo '</pre>';
+            // echo '<pre>'; 
+            // print_r($settings);
+            // echo '</pre>';
 
         }
         /**
