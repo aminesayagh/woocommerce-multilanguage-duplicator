@@ -3,154 +3,15 @@
 
 namespace WooCommerceMLDuplicator;
 
-require_once WMLD_PLUGIN_DIR . 'includes/class-notification.php';
 define('UNVALIDE_TAXO_TO_TRANSLATE', ['language', 'post_translations', 'nav_menu', 'link_category', 'post_format', 'product_type', 'product_visibility', 'product_shipping_class']); 
 define('PRODUCT_VARIATION_PREFIX', 'pa_');
 
-if (!class_exists('WMLD_Duplicator_Posts')) {
-    class WMLD_Duplicator_Posts
-    {
-        static function count_post(string $post_type = 'post', string $lang = ''): int
-        {
-            $args = array(
-                'post_type' => $post_type,
-                'posts_per_page' => -1,
-                'lang' => $lang
-            );
-            $posts = new \WP_Query($args);
-            return $posts->found_posts;
-        }
-        static function count_untranslated_posts(string $post_type = 'post'): int
-        {
-            $args = array(
-                'post_type' => $post_type,
-                'posts_per_page' => -1,
-                'meta_query' => array(
-                    array(
-                        'key' => '_translated',
-                        'compare' => 'NOT EXISTS'
-                    )
-                )
-            );
-            $posts = new \WP_Query($args);
-            return $posts->found_posts;
-        }
-        static function get_valid_taxonomies(string $post_type): array {
-            $taxonomies = get_object_taxonomies($post_type);
-            $valid_taxonomies = [];
-            foreach ($taxonomies as $taxonomy) {
-                if (!in_array($taxonomy, UNVALIDE_TAXO_TO_TRANSLATE) && strpos($taxonomy, PRODUCT_VARIATION_PREFIX) !== 0) {
-                    $valid_taxonomies[] = $taxonomy;
-                }
-            }
-            return $valid_taxonomies;
-        }
-        static function get_static($post_type): array {
-            $valid_languages = pll_languages_list();
 
-            $response = [
-                'post_type' => $post_type,
-                'valid_languages' => $valid_languages,
-                'valid_taxonomies' => self::get_valid_taxonomies($post_type),
-                'total_posts' => [
-                    'all' => self::count_post($post_type)
-                ],
-                'untranslated_posts' => [  
-                    'all' => self::count_untranslated_posts($post_type)
-                ],
-            ];
+require_once WMLD_PLUGIN_DIR . 'includes/class-notification.php';
+require_once WMLD_PLUGIN_DIR . 'includes/class-wmld-duplicator-posts.php';
+require_once WMLD_PLUGIN_DIR . 'includes/class-wmld-duplicator-taxonomies.php';
 
-            foreach ($valid_languages as $lang) {
-                $response['total_posts'][$lang] = self::count_post($post_type, $lang);
-                $response['untranslated_posts'][$lang] = self::count_untranslated_posts($post_type);
-            }
-            return $response;
-        }
-    }
-}
 
-if (!class_exists('WMLD_Duplicator_Products')) {
-    class WMLD_Duplicator_Products extends WMLD_Duplicator_Posts
-    {
-        static function count_products(string $lang = ''): int
-        {
-            return parent::count_post('product', $lang);
-        }
-        static function count_untranslated_products(): int
-        {
-            return parent::count_untranslated_posts('product');
-        }
-        static function get_static_products(): array {
-            $response = parent::get_static('product');
-            $response['total_products'] = [
-                'all' => $response['total_posts']['all']
-            ];
-            $response['untranslated_products'] = [
-                'all' => $response['untranslated_posts']['all']
-            ];
-            foreach ($response['valid_languages'] as $lang) {
-                $response['total_products'][$lang] = self::count_products($lang);
-                $response['untranslated_products'][$lang] = self::count_untranslated_products();
-            }
-            return $response;
-        }
-    }
-}
-
-if (!class_exists('WMLD_Duplicator_Taxonomies')) {
-    class WMLD_Duplicator_Taxonomies
-    {
-        static function count_taxonomies(string $taxonomy, string $lang = ''): int
-        {
-            $args = [
-                'taxonomy' => $taxonomy,
-                'hide_empty' => false,
-                'meta_query' => [
-                    [
-                        'key' => '_translated',
-                        'compare' => 'EXISTS'
-                    ]
-                ],
-                'lang' => $lang
-            ];
-            $terms = get_terms($args);
-            return count($terms);
-        }
-        static function count_untranslated_taxonomies(string $taxonomy): int
-        {
-            $args = [
-                'taxonomy' => $taxonomy,
-                'hide_empty' => false,
-                'meta_query' => array(
-                    array(
-                        'key' => '_translated',
-                        'compare' => 'NOT EXISTS'
-                    )
-                )
-            ];
-            $terms = get_terms($args);
-            return count($terms);
-        }
-        static function get_static(string $taxonomy): array {
-            $valid_languages = pll_languages_list();
-            $response = [
-                'taxonomy' => $taxonomy,
-                'valid_languages' => $valid_languages,
-                'total_terms' => [
-                    'all' => self::count_taxonomies($taxonomy)
-                ],
-                'untranslated_terms' => [
-                    'all' => self::count_untranslated_taxonomies($taxonomy)
-                ]
-            ];
-            foreach ($valid_languages as $lang) {
-                $response['total_terms'][$lang] = self::count_taxonomies($taxonomy, $lang);
-                $response['untranslated_terms'][$lang] = self::count_untranslated_taxonomies($taxonomy);
-            }
-            return $response;
-        }
-    }
-}
 
 if (!class_exists('WMLD_Duplicator')) {
     class WMLD_Duplicator
@@ -192,12 +53,17 @@ if (!class_exists('WMLD_Duplicator')) {
         private function check_dependencies(): bool
         {
             if (!function_exists('pll_languages_list')) {
-                add_action('admin_notices', \Notification::error(__('Polylang is not active', 'woocommerce-multilanguage-duplicator')));
+                
+                add_action('admin_notices', function () {
+                    return \Notification::error(__('Polylang is not active', 'woocommerce-multilanguage-duplicator'));
+                });
                 return false;
             }
             // check if the rest api is enabled
             if (!function_exists('rest_url')) {
-                add_action('admin_notices', \Notification::error(__('The REST API is not enabled', 'woocommerce-multilanguage-duplicator')));
+                add_action('admin_notices', function () {
+                    return \Notification::error(__('The REST API is not enabled', 'woocommerce-multilanguage-duplicator'));
+                });
                 return false;
             }
             return true;
@@ -216,7 +82,9 @@ if (!class_exists('WMLD_Duplicator')) {
         public function initialize()
         {
             if (!function_exists('pll_languages_list')) {
-                add_action('admin_notices', \Notification::error(__('Polylang is not active', 'woocommerce-multilanguage-duplicator')));
+                add_action('admin_notices', function () {
+                    return \Notification::error(__('Polylang is not active', 'woocommerce-multilanguage-duplicator'));
+                });
                 return;
             }
             add_menu_page(
@@ -227,6 +95,15 @@ if (!class_exists('WMLD_Duplicator')) {
                 array($this, 'render_admin_page'), // Function to display page content
                 'dashicons-translation', // Icon URL
                 6
+            );
+
+            add_submenu_page(
+                'woocommerce-multilanguage-duplicator', // Parent slug
+                __('Translation Configuration', 'woocommerce-multilanguage-duplicator'),
+                __('Configuration', 'woocommerce-multilanguage-duplicator'),
+                'manage_options',
+                'wmld-configuration',
+                array($this, 'render_configuration_page')
             );
         }
         /**
@@ -261,6 +138,11 @@ if (!class_exists('WMLD_Duplicator')) {
             // print_r($settings);
             // echo '</pre>';
 
+        }
+        public function render_configuration_page() {
+            $settings['post_types'] = get_post_types(['public' => true, '_builtin' => false]);
+            $settings['taxonomies'] = get_taxonomies(['public' => true, '_builtin' => false]);
+            require_once WMLD_PLUGIN_DIR . 'templates/configuration-page.php';
         }
         /**
          * Register the plugin settings.
