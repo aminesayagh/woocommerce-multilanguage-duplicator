@@ -1,4 +1,5 @@
 <?php
+namespace WooCommerceMLDuplicator;
 
 if (!class_exists('WMLD_Duplicator_Posts')) {
     class WMLD_Duplicator_Posts
@@ -44,7 +45,7 @@ if (!class_exists('WMLD_Duplicator_Posts')) {
             $response = [
                 'post_type' => $post_type,
                 'valid_languages' => $valid_languages,
-                'valid_taxonomies' => \WMLD_Duplicator_Taxonomies::get_valid_taxonomies($post_type),
+                'valid_taxonomies' => WMLD_Duplicator_Taxonomies::get_valid_taxonomies($post_type),
                 'total_posts' => [
                     'all' => self::count_post($post_type)
                 ],
@@ -58,6 +59,16 @@ if (!class_exists('WMLD_Duplicator_Posts')) {
                 $response['untranslated_posts'][$lang] = self::count_untranslated_posts($post_type);
             }
             return $response;
+        }
+        static function get_valid_post_types(array $args) {
+            $post_types = get_post_types($args);
+            $valid_post_types = [];
+            foreach ($post_types as $post_type) {
+                if (!in_array($post_type, UNVALIDE_POSTS_TO_TRANSLATE)) {
+                    $valid_post_types[] = $post_type;
+                }
+            }
+            return $valid_post_types;
         }
     }
 }

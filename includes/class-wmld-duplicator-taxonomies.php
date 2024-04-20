@@ -1,6 +1,6 @@
 <?php
 
-
+namespace WooCommerceMLDuplicator;
 
 if (!class_exists('WMLD_Duplicator_Taxonomies')) {
     class WMLD_Duplicator_Taxonomies

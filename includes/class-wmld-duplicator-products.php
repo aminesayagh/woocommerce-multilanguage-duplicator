@@ -1,5 +1,7 @@
 <?php
-require_once WMLD_PLUGIN_DIR . 'includes/class-wmld-duplicator-posts.php';
+
+
+namespace WooCommerceMLDuplicator;
 
 
 if (!class_exists('WMLD_Duplicator_Products')) {

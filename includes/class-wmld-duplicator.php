@@ -3,13 +3,7 @@
 
 namespace WooCommerceMLDuplicator;
 
-define('UNVALIDE_TAXO_TO_TRANSLATE', ['language', 'post_translations', 'nav_menu', 'link_category', 'post_format', 'product_type', 'product_visibility', 'product_shipping_class']); 
-define('PRODUCT_VARIATION_PREFIX', 'pa_');
 
-
-require_once WMLD_PLUGIN_DIR . 'includes/class-notification.php';
-require_once WMLD_PLUGIN_DIR . 'includes/class-wmld-duplicator-posts.php';
-require_once WMLD_PLUGIN_DIR . 'includes/class-wmld-duplicator-taxonomies.php';
 
 
 
@@ -98,13 +92,42 @@ if (!class_exists('WMLD_Duplicator')) {
             );
 
             add_submenu_page(
-                'woocommerce-multilanguage-duplicator', // Parent slug
+                'woocommerce-multilanguage-duplicator',
                 __('Translation Configuration', 'woocommerce-multilanguage-duplicator'),
                 __('Configuration', 'woocommerce-multilanguage-duplicator'),
                 'manage_options',
                 'wmld-configuration',
                 array($this, 'render_configuration_page')
             );
+
+            add_submenu_page(
+                'woocommerce-multilanguage-duplicator',
+                __('Translation Taxonomy', 'woocommerce-multilanguage-duplicator'),
+                __('Taxonomy', 'woocommerce-multilanguage-duplicator'),
+                'manage_options',
+                'wmld-taxonomy',
+                array($this, 'render_taxonomy_page')
+            );
+
+            // add_submenu_page(
+            //     'woocommerce-multilanguage-duplicator',
+            //     __('Translation Menu', 'woocommerce-multilanguage-duplicator'),
+            //     __('Menu', 'woocommerce-multilanguage-duplicator'),
+            //     'manage_options',
+            //     'wmld-menu',
+            //     array($this, 'render_menu_page')
+            // );
+
+            // add submenu page for product
+            add_submenu_page(
+                'woocommerce-multilanguage-duplicator',
+                __('Translation Product', 'woocommerce-multilanguage-duplicator'),
+                __('Product', 'woocommerce-multilanguage-duplicator'),
+                'manage_options',
+                'wmld-product',
+                array($this, 'render_product_page')
+            );
+
         }
         /**
          * Render the admin page.
@@ -125,24 +148,29 @@ if (!class_exists('WMLD_Duplicator')) {
             // TODO:: Manage the setting of the plugin to got the post types and taxonomies to translate
             $settings['commercent'] = WMLD_Duplicator_Posts::get_static('commercent');
             
-            echo '<pre>'; 
-            print_r($settings);
-            echo '</pre>';
             $settings['posts'] = WMLD_Duplicator_Posts::get_static('post');
             $settings['products'] = WMLD_Duplicator_Products::get_static_products();
             $valid_taxonomies = [...$settings['posts']['valid_taxonomies'], ...$settings['products']['valid_taxonomies']];
             foreach ($valid_taxonomies as $taxonomy) {
                 $settings['taxonomies'][$taxonomy] = WMLD_Duplicator_Taxonomies::get_static($taxonomy);
             }
-            // echo '<pre>'; 
-            // print_r($settings);
-            // echo '</pre>';
-
+            
+            require_once WMLD_PLUGIN_DIR . 'templates/admin-page.php';
         }
         public function render_configuration_page() {
-            $settings['post_types'] = get_post_types(['public' => true, '_builtin' => false]);
-            $settings['taxonomies'] = get_taxonomies(['public' => true, '_builtin' => false]);
+            $settings['post_types'] = WMLD_Duplicator_Posts::get_valid_post_types(['public' => true, '_builtin' => false]);
+            foreach ($settings['post_types'] as $post_type) {
+                $settings['taxonomies'][$post_type] = WMLD_Duplicator_Posts::get_valid_taxonomies($post_type);
+            }
+
             require_once WMLD_PLUGIN_DIR . 'templates/configuration-page.php';
+        }
+        public function render_taxonomy_page() {
+            $settings['taxonomies'] = WMLD_Duplicator_Taxonomies::get_valid_taxonomies('product');
+            require_once WMLD_PLUGIN_DIR . 'templates/taxonomies-page.php';
+        }
+        public function render_menu_page() {
+            require_once WMLD_PLUGIN_DIR . 'templates/menu-page.php';
         }
         /**
          * Register the plugin settings.
@@ -152,6 +180,10 @@ if (!class_exists('WMLD_Duplicator')) {
             register_setting('wmld_settings', 'wmld_settings', array($this, 'validate_settings'));
             add_settings_section('wmld_settings_section', __('Settings', 'woocommerce-multilanguage-duplicator'), array($this, 'settings_section_callback'), 'wmld_settings');
             add_settings_field('wmld_settings_field', __('Enable duplication', 'woocommerce-multilanguage-duplicator'), array($this, 'settings_field_callback'), 'wmld_settings', 'wmld_settings_section');
+        }
+        public function render_product_page() {
+            $settings['products'] = WMLD_Duplicator_Products::get_static_products();
+            require_once WMLD_PLUGIN_DIR . 'templates/product-page.php';
         }
         /**
          * Validate the plugin settings.
