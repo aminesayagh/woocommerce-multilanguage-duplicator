@@ -141,9 +141,6 @@ if (!class_exists('WMLD_Duplicator')) {
 
             // get a list of custom post types names from the database
             $custom_post_types = get_post_types(['public' => true, '_builtin' => false]);
-            echo '<pre>';
-            print_r($custom_post_types);
-            echo '</pre>';
 
             // TODO:: Manage the setting of the plugin to got the post types and taxonomies to translate
             $settings['commercent'] = WMLD_Duplicator_Posts::get_static('commercent');
@@ -155,7 +152,6 @@ if (!class_exists('WMLD_Duplicator')) {
                 $settings['taxonomies'][$taxonomy] = WMLD_Duplicator_Taxonomies::get_static($taxonomy);
             }
             
-            require_once WMLD_PLUGIN_DIR . 'templates/admin-page.php';
         }
         public function render_configuration_page() {
             $settings['post_types'] = WMLD_Duplicator_Posts::get_valid_post_types(['public' => true, '_builtin' => false]);
@@ -182,7 +178,6 @@ if (!class_exists('WMLD_Duplicator')) {
             add_settings_field('wmld_settings_field', __('Enable duplication', 'woocommerce-multilanguage-duplicator'), array($this, 'settings_field_callback'), 'wmld_settings', 'wmld_settings_section');
         }
         public function render_product_page() {
-            $settings['products'] = WMLD_Duplicator_Products::get_static_products();
             require_once WMLD_PLUGIN_DIR . 'templates/product-page.php';
         }
         /**
